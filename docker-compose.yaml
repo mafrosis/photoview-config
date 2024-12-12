@@ -3,6 +3,10 @@ volumes:
   photoview-cache: {}
   photoview-data: {}
 
+networks:
+  caddy:
+    external: true
+
 services:
   photoview:
     image: photoview/photoview:${PHOTOVIEW_VERSION}
@@ -17,11 +21,19 @@ services:
       PHOTOVIEW_DISABLE_FACE_RECOGNITION: 1
       PHOTOVIEW_DISABLE_RAW_PROCESSING: 1
       HOST_PHOTOVIEW_MEDIA_ROOT: /photos
+    networks:
+      - default
+      - caddy
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - photoview-cache:/data
       - /media/jorg/enc/onlyf:/photos/onlyf:ro
       - /media/jorg/photos/kids:/photos/kids:ro
+    labels:
+      caddy: photos.mafro.net
+      caddy.tls.ca: https://ca.mafro.net:4433/acme/acme/directory
+      caddy.tls.ca_root: /root/step_ca.crt
+      caddy.reverse_proxy: "{{upstreams 80}}"
     depends_on:
       - mariadb
 
