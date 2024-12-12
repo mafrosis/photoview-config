@@ -1,0 +1,49 @@
+---
+volumes:
+  photoview-cache: {}
+  photoview-data: {}
+
+services:
+  photoview:
+    image: photoview/photoview:${PHOTOVIEW_VERSION}
+    restart: unless-stopped
+    environment:
+      TZ: Australia/Melbourne
+      PHOTOVIEW_DATABASE_DRIVER: mysql
+      PHOTOVIEW_MYSQL_URL: "photoview:eggs@tcp(mariadb)/photoview"
+      PHOTOVIEW_MEDIA_CACHE: /data/media-cache
+      PHOTOVIEW_SQLITE_PATH: /data/photoview.db
+      PHOTOVIEW_FACE_RECOGNITION_MODELS_PATH: /data/models
+      PHOTOVIEW_DISABLE_FACE_RECOGNITION: 1
+      PHOTOVIEW_DISABLE_RAW_PROCESSING: 1
+      HOST_PHOTOVIEW_MEDIA_ROOT: /photos
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - photoview-cache:/data
+      - /media/jorg/enc/onlyf:/photos/onlyf:ro
+      - /media/jorg/photos/kids:/photos/kids:ro
+    depends_on:
+      - mariadb
+
+  mariadb:
+    image: mariadb:lts
+    restart: unless-stopped
+    command: mariadbd --innodb-buffer-pool-size=512M --transaction-isolation=READ-COMMITTED --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=512 --innodb-rollback-on-timeout=OFF --innodb-lock-wait-timeout=120
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    environment:
+      MARIADB_AUTO_UPGRADE: 1
+      MARIADB_DATABASE: photoview
+      MARIADB_USER: photoview
+      MARIADB_PASSWORD: eggs
+      MARIADB_ROOT_PASSWORD: eggseggs
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - photoview-data:/var/lib/mysql
+    healthcheck:
+      test: healthcheck.sh --connect --innodb_initialized
+      interval: 1m
+      timeout: 5s
+      retries: 5
+      start_period: 3m
